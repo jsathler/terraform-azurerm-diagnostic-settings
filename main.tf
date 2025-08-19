@@ -16,13 +16,6 @@ data "azurerm_monitor_diagnostic_categories" "default" {
 
 locals {
   /*
-    If metrics block is not provided, Terraform changes it to null but internaly Azure changes the enabled property from true to false
-    Every time terraform is applied, it changes this block to null again
-    This variable is used to set all available metrics enabled status to true or false to avoid this situation
-  */
-  metrics = { for metric in try(data.azurerm_monitor_diagnostic_categories.default.metrics, []) : metric => contains(var.metrics, metric) }
-
-  /*
     If var.logs.categories is not provided, it will enable all available logs that is not in the exception list
   */
 
@@ -33,7 +26,7 @@ locals {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "default" {
-  name               = "${var.name}-amds"
+  name               = var.name
   target_resource_id = var.resource_id
 
   #Destinations
@@ -51,11 +44,11 @@ resource "azurerm_monitor_diagnostic_setting" "default" {
     }
   }
 
-  dynamic "metric" {
-    for_each = { for key, value in local.metrics : key => value }
+  dynamic "enabled_metric" {
+    #for_each = { for key, value in var.metrics : key => value }
+    for_each = var.metrics
     content {
-      category = metric.key
-      enabled  = metric.value
+      category = enabled_metric.value
     }
   }
 }
